@@ -114,6 +114,7 @@ interface IHashOptions {
  * Returns a hashed input.
  *
  * @param input String to be hashed.
+ * @param options
  * @param options.length Optionally, shorten the output to desired length.
  */
 export function hash(input: string, options: IHashOptions = {}): string {
@@ -125,3 +126,51 @@ export function hash(input: string, options: IHashOptions = {}): string {
     }
     return hashedInput
 }
+
+
+/**
+ * Custom string splitting function to split input strings on dots ('.'), but treating
+ * everything between pipe characters ('|') as a single unit without further splitting.
+ *
+ * The function is designed to handle cases where table names or other strings in database
+ * schemas contain dots, which should not be treated as separators.
+ *
+ * @param {string} input - The input string to be split.
+ * @returns {string[]} An array of substrings split by dots outside the pipe characters.
+ *
+ * @example
+ * // returns ['_DATABASE_NAME', 'SOME.CUSTOM.TABLE.QV/CUSTOM_TABLE_1_QV']
+ * customSplit('_DATABASE_NAME.|SOME.CUSTOM.TABLE.QV/CUSTOM_TABLE_1_QV|');
+ *
+ * @example
+ * // returns ['segment1', 'segment2.segment3', 'segment4']
+ * customSplit('segment1.|segment2.segment3|.segment4');
+ */
+export function customSplit(input: string) {
+    const segments = [];
+    let buffer = '';
+    let insidePipes = false;
+
+    for (let i = 0; i < input.length; i++) {
+        const char = input[i];
+
+        if (char === '|' && !insidePipes) {
+            insidePipes = true;
+        } else if (char === '|' && insidePipes) {
+            insidePipes = false;
+        } else if (char === '.' && !insidePipes) {
+            segments.push(buffer);
+            buffer = '';
+        } else {
+            buffer += char;
+        }
+    }
+
+    // Push the last buffer
+    if (buffer) {
+        segments.push(buffer);
+    }
+
+    return segments;
+}
+

@@ -1,7 +1,7 @@
 import { ObjectLiteral } from "../../common/ObjectLiteral"
-import { QueryRunnerAlreadyReleasedError } from "../../error/QueryRunnerAlreadyReleasedError"
-import { TransactionAlreadyStartedError } from "../../error/TransactionAlreadyStartedError"
-import { TransactionNotStartedError } from "../../error/TransactionNotStartedError"
+import { QueryRunnerAlreadyReleasedError } from "../../error"
+import { TransactionAlreadyStartedError } from "../../error"
+import { TransactionNotStartedError } from "../../error"
 import { ColumnType } from "../types/ColumnTypes"
 import { ReadStream } from "../../platform/PlatformTools"
 import { BaseQueryRunner } from "../../query-runner/BaseQueryRunner"
@@ -27,6 +27,7 @@ import { QueryLock } from "../../query-runner/QueryLock"
 import { MetadataTableType } from "../types/MetadataTableType"
 import { InstanceChecker } from "../../util/InstanceChecker"
 import { promisify } from "util"
+import {customSplit} from "../../util/StringUtils";
 
 /**
  * Runs queries on a single SQL Server database connection.
@@ -368,7 +369,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
 
         const sql = `SELECT * FROM "SYS"."TABLES" WHERE "SCHEMA_NAME" = '${parsedTableName.schema}' AND "TABLE_NAME" = '${parsedTableName.tableName}'`
         const result = await this.query(sql)
-        return result.length ? true : false
+        return !!result.length
     }
 
     /**
@@ -386,7 +387,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
 
         const sql = `SELECT * FROM "SYS"."TABLE_COLUMNS" WHERE "SCHEMA_NAME" = ${parsedTableName.schema} AND "TABLE_NAME" = ${parsedTableName.tableName} AND "COLUMN_NAME" = '${columnName}'`
         const result = await this.query(sql)
-        return result.length ? true : false
+        return !!result.length
     }
 
     /**
@@ -1015,7 +1016,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
                 `Column "${oldTableColumnOrName}" was not found in the "${table.name}" table.`,
             )
 
-        let newColumn: TableColumn | undefined = undefined
+        let newColumn: TableColumn | undefined;
         if (InstanceChecker.isTableColumn(newTableColumnOrName)) {
             newColumn = newTableColumnOrName
         } else {
@@ -1082,7 +1083,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
                     ),
                 )
 
-                if (oldColumn.isPrimary === true) {
+                if (oldColumn.isPrimary) {
                     const primaryColumns = clonedTable.primaryColumns
 
                     // build old primary constraint name
@@ -1294,7 +1295,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
                     )
                 }
 
-                if (newColumn.isPrimary === true) {
+                if (newColumn.isPrimary) {
                     primaryColumns.push(newColumn)
                     // update column in table
                     const column = clonedTable.columns.find(
@@ -1367,7 +1368,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
             }
 
             if (newColumn.isUnique !== oldColumn.isUnique) {
-                if (newColumn.isUnique === true) {
+                if (newColumn.isUnique) {
                     const uniqueIndex = new TableIndex({
                         name: this.connection.namingStrategy.indexName(table, [
                             newColumn.name,
@@ -1386,13 +1387,9 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
                     downQueries.push(this.dropIndexSql(table, uniqueIndex))
                 } else {
                     const uniqueIndex = clonedTable.indices.find((index) => {
-                        return (
-                            index.columnNames.length === 1 &&
-                            index.isUnique === true &&
-                            !!index.columnNames.find(
-                                (columnName) => columnName === newColumn.name,
-                            )
-                        )
+                        return (index.columnNames.length === 1 && index.isUnique && !!index.columnNames.find(
+                            (columnName) => columnName === newColumn.name,
+                        ))
                     })
                     clonedTable.indices.splice(
                         clonedTable.indices.indexOf(uniqueIndex!),
@@ -2477,7 +2474,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
         } else {
             const tablesCondition = tableNames
                 .map((tableName) => {
-                    let [schema, name] = tableName.split(".")
+                    let [schema, name] = customSplit(tableName);
                     if (!name) {
                         name = schema
                         schema = this.driver.options.schema || currentSchema
@@ -2613,11 +2610,8 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
                                 tableMetadata.indices.some((index) => {
                                     return columnUniqueIndices.some(
                                         (uniqueIndex) => {
-                                            return (
-                                                index.name ===
-                                                    uniqueIndex["INDEX_NAME"] &&
-                                                index.synchronize === false
-                                            )
+                                            return (index.name ===
+                                                uniqueIndex["INDEX_NAME"] && !index.synchronize)
                                         },
                                     )
                                 })
@@ -2897,11 +2891,7 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
             .filter((column) => column.isUnique)
             .forEach((column) => {
                 const isUniqueIndexExist = table.indices.some((index) => {
-                    return (
-                        index.columnNames.length === 1 &&
-                        !!index.isUnique &&
-                        index.columnNames.indexOf(column.name) !== -1
-                    )
+                    return (index.columnNames.length === 1 && index.isUnique && index.columnNames.indexOf(column.name) !== -1)
                 })
                 const isUniqueConstraintExist = table.uniques.some((unique) => {
                     return (
@@ -3333,11 +3323,11 @@ export class SapQueryRunner extends BaseQueryRunner implements QueryRunner {
         if (column.default !== undefined && column.default !== null)
             // DEFAULT must be placed before NOT NULL
             c += " DEFAULT " + column.default
-        if (column.isNullable !== true && !column.isGenerated)
+        if (!column.isNullable && !column.isGenerated)
             // NOT NULL is not supported with GENERATED
             c += " NOT NULL"
         if (
-            column.isGenerated === true &&
+            column.isGenerated &&
             column.generationStrategy === "increment"
         )
             c += " GENERATED ALWAYS AS IDENTITY"

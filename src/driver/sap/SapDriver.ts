@@ -8,24 +8,25 @@ import {
     TableForeignKey,
     TypeORMError,
 } from "../.."
-import { DriverPackageNotInstalledError } from "../../error/DriverPackageNotInstalledError"
-import { ColumnMetadata } from "../../metadata/ColumnMetadata"
-import { PlatformTools } from "../../platform/PlatformTools"
-import { RdbmsSchemaBuilder } from "../../schema-builder/RdbmsSchemaBuilder"
-import { ApplyValueTransformers } from "../../util/ApplyValueTransformers"
-import { DateUtils } from "../../util/DateUtils"
-import { OrmUtils } from "../../util/OrmUtils"
-import { Driver } from "../Driver"
-import { CteCapabilities } from "../types/CteCapabilities"
-import { DataTypeDefaults } from "../types/DataTypeDefaults"
-import { MappedColumnTypes } from "../types/MappedColumnTypes"
-import { SapConnectionOptions } from "./SapConnectionOptions"
-import { SapQueryRunner } from "./SapQueryRunner"
-import { ReplicationMode } from "../types/ReplicationMode"
-import { DriverUtils } from "../DriverUtils"
-import { View } from "../../schema-builder/view/View"
-import { InstanceChecker } from "../../util/InstanceChecker"
-import { UpsertType } from "../types/UpsertType"
+import {DriverPackageNotInstalledError} from "../../error"
+import {ColumnMetadata} from "../../metadata/ColumnMetadata"
+import {PlatformTools} from "../../platform/PlatformTools"
+import {RdbmsSchemaBuilder} from "../../schema-builder/RdbmsSchemaBuilder"
+import {ApplyValueTransformers} from "../../util/ApplyValueTransformers"
+import {DateUtils} from "../../util/DateUtils"
+import {OrmUtils} from "../../util/OrmUtils"
+import {Driver} from "../Driver"
+import {CteCapabilities} from "../types/CteCapabilities"
+import {DataTypeDefaults} from "../types/DataTypeDefaults"
+import {MappedColumnTypes} from "../types/MappedColumnTypes"
+import {SapConnectionOptions} from "./SapConnectionOptions"
+import {SapQueryRunner} from "./SapQueryRunner"
+import {ReplicationMode} from "../types/ReplicationMode"
+import {DriverUtils} from "../DriverUtils"
+import {View} from "../../schema-builder/view/View"
+import {InstanceChecker} from "../../util/InstanceChecker"
+import {UpsertType} from "../types/UpsertType"
+import {customSplit} from "../../util/StringUtils";
 
 /**
  * Organizes communication with SAP Hana DBMS.
@@ -458,7 +459,7 @@ export class SapDriver implements Driver {
             }
         }
 
-        const parts = target.split(".")
+        const parts = customSplit(target);
 
         return {
             database: driverDatabase,
@@ -518,7 +519,7 @@ export class SapDriver implements Driver {
                 : value
 
         if (columnMetadata.type === Boolean) {
-            value = value ? true : false
+            value = !!value
         } else if (
             columnMetadata.type === "timestamp" ||
             columnMetadata.type === "seconddate" ||
@@ -815,8 +816,7 @@ export class SapDriver implements Driver {
      */
     protected loadDependencies(): void {
         try {
-            const client = this.options.driver || PlatformTools.load("hdb-pool")
-            this.client = client
+            this.client = this.options.driver || PlatformTools.load("hdb-pool")
         } catch (e) {
             // todo: better error for browser env
             throw new DriverPackageNotInstalledError("SAP Hana", "hdb-pool")

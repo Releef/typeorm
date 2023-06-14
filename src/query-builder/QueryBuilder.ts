@@ -1,6 +1,6 @@
 import { ObjectLiteral } from "../common/ObjectLiteral"
 import { QueryRunner } from "../query-runner/QueryRunner"
-import { DataSource } from "../data-source/DataSource"
+import { DataSource } from "../data-source"
 import { QueryBuilderCteOptions } from "./QueryBuilderCte"
 import { QueryExpressionMap } from "./QueryExpressionMap"
 import { SelectQueryBuilder } from "./SelectQueryBuilder"
@@ -20,11 +20,12 @@ import { In } from "../find-options/operator/In"
 import { TypeORMError } from "../error"
 import { WhereClause, WhereClauseCondition } from "./WhereClause"
 import { NotBrackets } from "./NotBrackets"
-import { EntityPropertyNotFoundError } from "../error/EntityPropertyNotFoundError"
+import { EntityPropertyNotFoundError } from "../error"
 import { ReturningType } from "../driver/Driver"
 import { OracleDriver } from "../driver/oracle/OracleDriver"
 import { InstanceChecker } from "../util/InstanceChecker"
 import { escapeRegExp } from "../util/escapeRegExp"
+import {customSplit} from "../util/StringUtils";
 
 // todo: completely cover query builder with tests
 // todo: entityOrProperty can be target name. implement proper behaviour if it is.
@@ -623,8 +624,7 @@ export abstract class QueryBuilder<Entity extends ObjectLiteral> {
      * schema name, otherwise returns escaped table name.
      */
     protected getTableName(tablePath: string): string {
-        return tablePath
-            .split(".")
+        return customSplit(tablePath)
             .map((i) => {
                 // this condition need because in SQL Server driver when custom database name was specified and schema name was not, we got `dbName..tableName` string, and doesn't need to escape middle empty string
                 if (i === "") return i

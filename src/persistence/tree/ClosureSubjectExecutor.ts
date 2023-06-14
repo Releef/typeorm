@@ -1,10 +1,11 @@
 import { Subject } from "../Subject"
 import { QueryRunner } from "../../query-runner/QueryRunner"
 import { ObjectLiteral } from "../../common/ObjectLiteral"
-import { CannotAttachTreeChildrenEntityError } from "../../error/CannotAttachTreeChildrenEntityError"
+import { CannotAttachTreeChildrenEntityError } from "../../error"
 import { DeleteQueryBuilder } from "../../query-builder/DeleteQueryBuilder"
 import { OrmUtils } from "../../util/OrmUtils"
 import { ColumnMetadata } from "../../metadata/ColumnMetadata"
+import {customSplit} from "../../util/StringUtils";
 
 /**
  * Executes subject operations for closure entities.
@@ -364,8 +365,7 @@ export class ClosureSubjectExecutor {
      * schema name, otherwise returns escaped table name.
      */
     protected getTableName(tablePath: string): string {
-        return tablePath
-            .split(".")
+        return customSplit(tablePath)
             .map((i) => {
                 // this condition need because in SQL Server driver when custom database name was specified and schema name was not, we got `dbName..tableName` string, and doesn't need to escape middle empty string
                 return i === ""
