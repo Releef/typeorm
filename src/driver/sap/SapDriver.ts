@@ -210,7 +210,7 @@ export class SapDriver implements Driver {
      * Max length allowed by SAP HANA for aliases (identifiers).
      * @see https://help.sap.com/viewer/4fe29514fd584807ac9f2a04f6754767/2.0.03/en-US/20a760537519101497e3cfe07b348f3c.html
      */
-    maxAliasLength = 128
+    maxAliasLength = 126
 
     cteCapabilities: CteCapabilities = {
         enabled: true,
